@@ -58,6 +58,47 @@ def test_sink_parquet(io_files_path: Path, tmp_path: Path) -> None:
         assert_frame_equal(result, df_read)
 
 
+@pytest.mark.xfail(reason='scan_ndjson().sink_parquet() fails, see issue #10964')
+@pytest.mark.write_disk()
+def test_scan_ndjson_sink_parquet(io_files_path: Path, tmp_path: Path) -> None:
+    tmp_path.mkdir(exist_ok=True)
+
+    input_file = io_files_path / "foods1.ndjson"
+    golden_file = io_files_path / "foods1.parquet"
+    file_path = tmp_path / "sink.parquet"
+
+    schema = {
+        "category": pl.Categorical,
+        "calories": pl.Int64,
+        "fats_g": pl.Float64,
+        "sugars_g": pl.Int64,
+    }
+    df_scanned = pl.scan_ndjson(input_file, schema=schema)
+    df_scanned.sink_parquet(file_path)
+
+    with pl.StringCache():
+        result = pl.read_parquet(file_path)
+        df_read = pl.read_parquet(golden_file)
+        assert_frame_equal(result, df_read)
+
+
+@pytest.mark.write_disk()
+def test_scan_csv_sink_parquet(io_files_path: Path, tmp_path: Path) -> None:
+    tmp_path.mkdir(exist_ok=True)
+
+    input_file = io_files_path / "small.csv"
+    golden_file = io_files_path / "small.parquet"
+    file_path = tmp_path / "sink.parquet"
+
+    df_scanned = pl.scan_csv(input_file)
+    df_scanned.sink_parquet(file_path)
+
+    with pl.StringCache():
+        result = pl.read_parquet(file_path)
+        df_read = pl.read_parquet(golden_file)
+        assert_frame_equal(result, df_read)
+
+
 @pytest.mark.write_disk()
 def test_sink_parquet_10115(tmp_path: Path) -> None:
     in_path = tmp_path / "in.parquet"
